@@ -112,7 +112,7 @@ def createhashtableidx():
             else:
                 try:
                     cursor = corecursor(conn, query)
-                    cursor.close()
+                    # cursor.close()
                     result = True
                     print('Create a SQLite DB Table INDEX!')
                 except Error as e:
@@ -180,7 +180,6 @@ def md5indb(fname):
     """
     Checks if md5 hash tag exists in the SQLite DB
     """
-    result = False
     query = "SELECT md5 FROM files WHERE fname = ?"
     try:
         conn = connectdb()
@@ -191,9 +190,7 @@ def md5indb(fname):
                     args = (fname, )
                     md5row = corecursor(conn, query, args).fetchone()
                     if md5row:
-                        result = True
-                    else:
-                        inserthashtable(fname, md5short(fname))
+                        return md5row[0]
                 except Error as e:
                     print(e)
                 finally:
@@ -204,7 +201,7 @@ def md5indb(fname):
                         print("Closed connection to the database successfully")
     except Error as e:
         print(e)
-    return result
+    return None
 
 
 def haschanged(fname, md5):
@@ -212,7 +209,7 @@ def haschanged(fname, md5):
     Checks if a file has changed
     """
     fileMD5inDB = md5indb(fname)
-    if fileMD5inDB == False:
+    if fileMD5inDB is None:
         setuphashtable(fname, md5)
     elif fileMD5inDB != md5:
         updatehashtable(fname, md5)
@@ -275,15 +272,15 @@ if __name__ == "__main__":
     print("FILE1 extension is:  ", getfileext(file1))
     print('modif date for FILE1 is:  ', getmoddate(file1))
     print('MD5 for FILE1 from DB:', md5indb(file1))
-    print('FILE1 MD5 value is: ', md5short(file1))
+    print('FILE1 MD5 value is: ooooooooooooooo>', md5short(file1))
 
     with open(file1, "a") as file_object:
         # Append 'hello modification' at the end of file
         file_object.write("hello modification")
 
-    print('New FILE1 MD5 value is: ', md5short(file1))
+    print('New FILE1 MD5 value is: +++++++++++++++>', md5short(file1))
     haschanged(file1, md5short(file1))
-    print('New FILE1 MD5 in DB value is: ', md5indb(file1))
+    print('New FILE1 MD5 in DB value is: ~~~~~~~~~~~~~~~~~>', md5indb(file1))
 
     #setuphashtable(file1, bytearray([1, 1, 2, 3, 5]))
 
