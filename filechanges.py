@@ -1,6 +1,7 @@
 import os
 import sys
 import sqlite3
+import hashlib
 from sqlite3 import Error
 
 
@@ -111,7 +112,7 @@ def createhashtableidx():
             else:
                 try:
                     cursor = corecursor(conn, query)
-                    cursor.close()
+                    # cursor.close()
                     result = True
                     print('Create a SQLite DB Table INDEX!')
                 except Error as e:
@@ -179,7 +180,6 @@ def md5indb(fname):
     """
     Checks if md5 hash tag exists in the SQLite DB
     """
-    items = []
     query = "SELECT md5 FROM files WHERE fname = ?"
     try:
         conn = connectdb()
@@ -188,8 +188,9 @@ def md5indb(fname):
                 try:
                     cursor = conn.cursor()
                     args = (fname, )
-                    result = corecursor(conn, query, args)
-                    items = cursor.fetchall()
+                    md5row = corecursor(conn, query, args).fetchone()
+                    if md5row:
+                        return md5row[0]
                 except Error as e:
                     print(e)
                 finally:
@@ -200,7 +201,50 @@ def md5indb(fname):
                         print("Closed connection to the database successfully")
     except Error as e:
         print(e)
-    return items
+    return None
+
+
+def haschanged(fname, md5):
+    """
+    Checks if a file has changed
+    """
+    fileMD5inDB = md5indb(fname)
+    if fileMD5inDB is None:
+        setuphashtable(fname, md5)
+    elif fileMD5inDB != md5:
+        updatehashtable(fname, md5)
+    else:
+        raise ValueError('A MD5 corner case might happened.')
+    return result
+
+
+def getfileext(fname):
+    """
+    Get the file name extension
+    """
+    return os.path.splitext(fname)[1][1:]
+
+
+def getmoddate(fname):
+    """
+    Get file modified date
+    """
+    try:
+        mtime = os.path.getmtime(fname)
+    except Error as e:
+        print(e)
+    return mtime
+
+
+def md5short(fname):
+    """
+    Get md5 file hash tag
+    """
+    with open(fname, 'r') as open_file:
+        content = open_file.read()
+        hasher = hashlib.md5(content.encode('utf-8'))
+    md5value = hasher.hexdigest()
+    return md5value
 
 
 """Check functionality"""
@@ -219,9 +263,26 @@ if __name__ == "__main__":
     for row in result:
         print(row)
 
-    setuphashtable('test', bytearray([1, 1, 2, 3, 5]))
-    updatehashtable('test', bytearray([1, 2, 3, 5, 8]))
-    md5indb('file')
+    setuphashtable('test.txt', bytearray([1, 1, 2, 3, 5]))
+    updatehashtable('test.txt', bytearray([1, 2, 3, 5, 8]))
+
+    file1 = os.path.join(os.getcwd(), 'testdocuments', 'test1.txt')
+    file2 = os.path.join(os.getcwd(), 'testdocuments', 'test2.txt')
+    print("MD5 for FILE1 from DB:", md5indb(file1))
+    print("FILE1 extension is:  ", getfileext(file1))
+    print('modif date for FILE1 is:  ', getmoddate(file1))
+    print('MD5 for FILE1 from DB:', md5indb(file1))
+    print('FILE1 MD5 value is: ooooooooooooooo>', md5short(file1))
+
+    with open(file1, "a") as file_object:
+        # Append 'hello modification' at the end of file
+        file_object.write("hello modification")
+
+    print('New FILE1 MD5 value is: +++++++++++++++>', md5short(file1))
+    haschanged(file1, md5short(file1))
+    print('New FILE1 MD5 in DB value is: ~~~~~~~~~~~~~~~~~>', md5indb(file1))
+
+    #setuphashtable(file1, bytearray([1, 1, 2, 3, 5]))
 
     tableexists('people')  # Check if table exists
     tableexists('files')   # Check if table exists
