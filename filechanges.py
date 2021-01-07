@@ -192,6 +192,8 @@ def md5indb(fname):
                     md5row = corecursor(conn, query, args).fetchone()
                     if md5row:
                         result = True
+                    else:
+                        inserthashtable(fname, md5short(fname))
                 except Error as e:
                     print(e)
                 finally:
@@ -205,16 +207,18 @@ def md5indb(fname):
     return result
 
 
-# def haschanged(fname, md5):
-#     """
-#     Checks if a file has changed
-#     """
-#     # Call md5indb ...
-#     # if the file’s MD5 hash has changed...
-#     # Update the hash table ...
-#     else:
-#         # Setup the hash table ...
-#     return result
+def haschanged(fname, md5):
+    """
+    Checks if a file has changed
+    """
+    fileMD5inDB = md5indb(fname)
+    if fileMD5inDB == False:
+        setuphashtable(fname, md5)
+    elif fileMD5inDB != md5:
+        updatehashtable(fname, md5)
+    else:
+        raise ValueError('A MD5 corner case might happened.')
+    return result
 
 
 def getfileext(fname):
@@ -267,10 +271,10 @@ if __name__ == "__main__":
 
     file1 = os.path.join(os.getcwd(), 'testdocuments', 'test1.txt')
     file2 = os.path.join(os.getcwd(), 'testdocuments', 'test2.txt')
-    print("FILE1 exists:  ", md5indb(file1))
+    print("MD5 for FILE1 from DB:", md5indb(file1))
     print("FILE1 extension is:  ", getfileext(file1))
     print('modif date for FILE1 is:  ', getmoddate(file1))
-    print('MD5 for FILE1 is in DB:', md5indb(file1))
+    print('MD5 for FILE1 from DB:', md5indb(file1))
     print('FILE1 MD5 value is: ', md5short(file1))
 
     with open(file1, "a") as file_object:
@@ -278,6 +282,8 @@ if __name__ == "__main__":
         file_object.write("hello modification")
 
     print('New FILE1 MD5 value is: ', md5short(file1))
+    haschanged(file1, md5short(file1))
+    print('New FILE1 MD5 in DB value is: ', md5indb(file1))
 
     #setuphashtable(file1, bytearray([1, 1, 2, 3, 5]))
 
