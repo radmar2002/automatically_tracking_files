@@ -20,7 +20,7 @@ def connectdb():
     try:
         dbfile = getbasefile() + '.db'
         conn = sqlite3.connect(dbfile, timeout=2)
-        print("Connection is established: Database is created on disk")
+        #print("Connection is established: Database is created on disk")
         return conn
     except Error as e:
         print('Connection went wrong:', e)
@@ -55,7 +55,7 @@ def tableexists(table):
             numrows = len(list(rows))
             if numrows > 0:
                 result = True
-        print('Table exist:', result)
+        #print('Table exist:', result)
     except Error as e:
         print(e)
     finally:
@@ -63,7 +63,7 @@ def tableexists(table):
         if conn != None:
             conn.commit()
             conn.close()
-            print("Closed connection to the database successfully")
+            #print("Closed connection to the database successfully")
     return result
 
 
@@ -83,7 +83,7 @@ def createhashtable():
                     cursor = corecursor(conn, query)
                     cursor.close()
                     result = True
-                    print('Created a SQLite DB Table!')
+                    #print('Created a SQLite DB Table!')
                 except Error as e:
                     print('Create a SQLite DB Table went wrong: ', e)
     except Error as e:
@@ -92,7 +92,7 @@ def createhashtable():
         if conn != None:
             conn.commit()
             conn.close()
-            print("Closed connection to the database successfully")
+            #print("Closed connection to the database successfully")
     return result
 
 
@@ -115,7 +115,7 @@ def createhashtableidx():
                     cursor = corecursor(conn, query)
                     # cursor.close()
                     result = True
-                    print('Create a SQLite DB Table INDEX!')
+                    #print('Create a SQLite DB Table INDEX!')
                 except Error as e:
                     print('Create a SQLite DB Table INDEX went wrong: ', e)
     except Error as e:
@@ -124,7 +124,7 @@ def createhashtableidx():
         if conn != None:
             conn.commit()
             conn.close()
-            print("Closed connection to the database successfully")
+            #print("Closed connection to the database successfully")
     return result
 
 
@@ -141,6 +141,7 @@ def runcmd(query, args=None):
                 try:
                     cursor = conn.cursor()
                     cursor.execute(query, args)
+                    #print('query----------->', query, args)
                     conn.commit()
                     cursor.close()
                     result = True
@@ -190,6 +191,7 @@ def md5indb(fname):
                     args = (fname, )
                     md5row = corecursor(conn, query, args).fetchone()
                     if md5row:
+                        #print('md5 in DB -------------------->', md5row[0])
                         return md5row[0]
                 except Error as e:
                     print(e)
@@ -198,7 +200,7 @@ def md5indb(fname):
                     if conn != None:
                         conn.commit()
                         conn.close()
-                        print("Closed connection to the database successfully")
+                        #print("Closed connection to the database successfully")
     except Error as e:
         print(e)
     return None
@@ -266,6 +268,7 @@ def loadflds():
     ext = []
     #config = getbasefile() + '.ini'
     config = os.path.join(os.getcwd(), 'filechanges.ini')
+    # print(config)
     if os.path.isfile(config):
         cfile = open(config, 'r')
         # Parse each config file line and get the folder and extensions
@@ -301,7 +304,7 @@ def checkfilechanges(folder, exclude, ws=None):
                     if file_changed != 'NOT_CHANGED':
                         changed = True
                         with open('REPORT_FILE.csv', "a") as file_object:
-                            # Append change log at the end of file
+                            # Append 'hello modification' at the end of file
                             file_object.write(
                                 file_changed+", " +
                                 str(getmoddate(origin)) + ', ' + origin + "\n"
