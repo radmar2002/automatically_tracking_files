@@ -3,7 +3,11 @@ import os
 import sys
 import sqlite3
 import hashlib
+import openpyxl
+import socket
 
+from openpyxl import Workbook
+from openpyxl.styles import Font
 from sqlite3 import Error
 from datetime import datetime
 
@@ -319,7 +323,8 @@ def runfilechanges(ws=None):
     for i, fld in enumerate(currentpaths):
         print('List banned extensions: ', bannedextensions[i], '<--->', fld)
         # Invoke the function that checks each folder for file changes
-        checkfilechanges(fld, bannedextensions[i], ws=None)
+        if checkfilechanges(fld, bannedextensions[i], ws):
+            changed = True
     return changed
 
 
@@ -328,19 +333,90 @@ def getdt(frmt):
     return today.strftime(frmt)
 
 
-# def execute(args):
-#     # Start the creation of the Excel report
-#     while True:
-#         changed = runfilechanges(ws)
-#         # Check for a keyboard interruption to stop the script
-#     # Finalize the creation of the Excel report
+def startxlsreport(cnf):
+    # Create the workbook, get the hostname and current DateTime
+    xls = getbasefile() + '.xlsx'
+    if os.path.exists(xls):
+        wb = Workbook() if cnf == True else openpyxl.load_workbook(xls)
+    else:
+        wb = Workbook()
+    ws = wb.active
+    ws.title = socket.gethostname()
+    st = getdt("%d-%b-%Y %H_%M_%S") if cnf == True else ''
+    return wb, ws, st
+
+
+def endxlsreport(wb, st):
+    if st != '':
+        dt = ' from ' + st + ' to ' + getdt("%d-%b-%Y %H_%M_%S")
+        fn = getbasefile() + dt + '.xlsx'
+    else:
+        fn = getbasefile() + '.xlsx'
+    wb.save(fn)
+
+
+def headerxlsreport(ws):
+    ws.cell(row=1, column=1, value="File Name")
+    ws.cell(row=1, column=2, value="Full File Name")
+    ws.cell(row=1, column=3, value="Folder Name")
+    ws.cell(row=1, column=4, value="Date")
+    ws.cell(row=1, column=5, value="Time")
+
+    ft = Font(color="000000", bold=True)
+    ws["A1"].font = ft
+    ws["A2"].font = ft
+    ws["A3"].font = ft
+    ws["A4"].font = ft
+    ws["A6"].font = ft
+
+
+def getlastrow(ws):
+    rw = 1
+    for cell in ws["A"]:
+        if cell.value is None:
+            break
+        else:
+            rw += 1
+    return rw
+
+
+def rowxlsreport(ws, fn, ffn, fld, d, t):
+    row = getlastrow(ws)
+    ws.cell(row=row, column=1, value=fn)
+    ws.cell(row=row, column=2, value=ffn)
+    ws.cell(row=row, column=3, value=fld)
+    ws.cell(row=row, column=4, value=d)
+    ws.cell(row=row, column=5, value=t)
+
+
+def execute(args):
+    changed = False
+    # Start the creation of the Excel report
+    if len(args) > 1:
+        if args[1].lower() == '--loop':
+            if len(args) == 3:
+                cnf = True if args[2].lower() == '--cnf' else False
+            else:
+                cnf = False
+            wb, ws, st = startxlsreport(cnf)
+            try:
+                while True:
+                    changed = runfilechanges(ws)
+            except KeyboardInterrupt:
+                print('Program stopped!!')
+                if changed:
+                    endxlsreport(wb, st)
+    else:
+        wb, ws, st = startxlsreport()
+        changed = runfilechanges(ws)
+        if changed:
+            endxlsreport(wb, st)
 
 
 """Check functionality"""
 if __name__ == "__main__":
     print(sys.argv)
-
-    print('--------------------->> ', getdt("%d-%b-%Y %H_%M_%S"))
+    execute(sys.argv)
 
     """
     conn = connectdb()
