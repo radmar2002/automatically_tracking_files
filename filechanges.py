@@ -288,7 +288,7 @@ def loadflds():
     return flds, ext
 
 
-def checkfilechanges(folder, exclude, ws=None):
+def checkfilechanges(folder, exclude, ws):
     changed = False
     """Checks for files changes"""
     for subdir, dirs, files in os.walk(folder, topdown=True):
@@ -306,17 +306,15 @@ def checkfilechanges(folder, exclude, ws=None):
                     file_changed = haschanged(origin, filemd5)
                     if file_changed != 'NOT_CHANGED':
                         changed = True
-                        with open('REPORT_FILE.csv', "a") as file_object:
-                            # Append change log at the end of file
-                            file_object.write(
-                                file_changed+", " +
-                                str(getmoddate(origin)) + ', ' + origin + "\n"
-                            )
+                        now = getdt("%d-%b-%Y %H_%M_%S")
+                        dt = now.split(' ')
+                        rowxlsreport(ws, fname, origin, subdir, dt[0], dt[1])
+                        print(origin + ' changed now: ' + now)
                     print('file has changed', haschanged(origin, filemd5))
     return changed
 
 
-def runfilechanges(ws=None):
+def runfilechanges(ws):
     changed = False
     # Invoke the function that loads and parses the config file
     currentpaths, bannedextensions = loadflds()
@@ -402,7 +400,7 @@ def execute(args):
             try:
                 while True:
                     changed = runfilechanges(ws)
-            except KeyboardInterrupt:
+            except:
                 print('Program stopped!!')
                 if changed:
                     endxlsreport(wb, st)
