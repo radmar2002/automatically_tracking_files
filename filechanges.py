@@ -3,7 +3,9 @@ import os
 import sys
 import sqlite3
 import hashlib
+
 from sqlite3 import Error
+from datetime import datetime
 
 
 def getbasefile():
@@ -321,8 +323,26 @@ def runfilechanges(ws=None):
     return changed
 
 
+def getdt(frmt):
+    today = datetime.today()
+    return today.strftime(frmt)
+
+
+# def execute(args):
+#     # Start the creation of the Excel report
+#     while True:
+#         changed = runfilechanges(ws)
+#         # Check for a keyboard interruption to stop the script
+#     # Finalize the creation of the Excel report
+
+
 """Check functionality"""
 if __name__ == "__main__":
+    print(sys.argv)
+
+    print('--------------------->> ', getdt("%d-%b-%Y %H_%M_%S"))
+
+    """
     conn = connectdb()
     cursor = conn.cursor()
 
@@ -379,3 +399,4 @@ if __name__ == "__main__":
     time.sleep(2)
     runfilechanges()
     runfilechanges()
+    """
