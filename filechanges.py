@@ -26,7 +26,7 @@ def connectdb():
     try:
         dbfile = getbasefile() + '.db'
         conn = sqlite3.connect(dbfile, timeout=2)
-        print("Connection is established: Database is created on disk")
+        #print("Connection is established: Database is created on disk")
         return conn
     except Error as e:
         print('Connection went wrong:', e)
@@ -61,7 +61,7 @@ def tableexists(table):
             numrows = len(list(rows))
             if numrows > 0:
                 result = True
-        print('Table exist:', result)
+        #print('Table exist:', result)
     except Error as e:
         print(e)
     finally:
@@ -69,7 +69,7 @@ def tableexists(table):
         if conn != None:
             conn.commit()
             conn.close()
-            print("Closed connection to the database successfully")
+            #print("Closed connection to the database successfully")
     return result
 
 
@@ -89,7 +89,7 @@ def createhashtable():
                     cursor = corecursor(conn, query)
                     cursor.close()
                     result = True
-                    print('Created a SQLite DB Table!')
+                    #print('Created a SQLite DB Table!')
                 except Error as e:
                     print('Create a SQLite DB Table went wrong: ', e)
     except Error as e:
@@ -98,7 +98,7 @@ def createhashtable():
         if conn != None:
             conn.commit()
             conn.close()
-            print("Closed connection to the database successfully")
+            #print("Closed connection to the database successfully")
     return result
 
 
@@ -121,7 +121,7 @@ def createhashtableidx():
                     cursor = corecursor(conn, query)
                     # cursor.close()
                     result = True
-                    print('Create a SQLite DB Table INDEX!')
+                    #print('Create a SQLite DB Table INDEX!')
                 except Error as e:
                     print('Create a SQLite DB Table INDEX went wrong: ', e)
     except Error as e:
@@ -130,7 +130,7 @@ def createhashtableidx():
         if conn != None:
             conn.commit()
             conn.close()
-            print("Closed connection to the database successfully")
+            #print("Closed connection to the database successfully")
     return result
 
 
@@ -204,7 +204,7 @@ def md5indb(fname):
                     if conn != None:
                         conn.commit()
                         conn.close()
-                        print("Closed connection to the database successfully")
+                        #print("Closed connection to the database successfully")
     except Error as e:
         print(e)
     return None
@@ -288,7 +288,7 @@ def loadflds():
     return flds, ext
 
 
-def checkfilechanges(folder, exclude, ws=None):
+def checkfilechanges(folder, exclude, ws):
     changed = False
     """Checks for files changes"""
     for subdir, dirs, files in os.walk(folder, topdown=True):
@@ -298,30 +298,27 @@ def checkfilechanges(folder, exclude, ws=None):
                 # Get file extension and check if it is not excluded
                 fileext = getfileext(origin)
                 if fileext not in exclude:
-                    print('===>', origin)
+                    #print('===>', origin)
                     # Get the file’s md5 hash
                     filemd5 = md5short(origin)
-                    print('File’s md5 hash is:', filemd5, md5indb(origin))
+                    #print('File’s md5 hash is:', filemd5, md5indb(origin))
                     # If the file has changed, add it to the Excel report
                     file_changed = haschanged(origin, filemd5)
                     if file_changed != 'NOT_CHANGED':
                         changed = True
-                        with open('REPORT_FILE.csv', "a") as file_object:
-                            # Append change log at the end of file
-                            file_object.write(
-                                file_changed+", " +
-                                str(getmoddate(origin)) + ', ' + origin + "\n"
-                            )
-                    print('file has changed', haschanged(origin, filemd5))
+                        now = getdt("%d-%b-%Y %H_%M_%S")
+                        dt = now.split(' ')
+                        rowxlsreport(ws, fname, origin, subdir, dt[0], dt[1])
+                        print(origin + ' changed now: ' + now)
     return changed
 
 
-def runfilechanges(ws=None):
+def runfilechanges(ws):
     changed = False
     # Invoke the function that loads and parses the config file
     currentpaths, bannedextensions = loadflds()
     for i, fld in enumerate(currentpaths):
-        print('List banned extensions: ', bannedextensions[i], '<--->', fld)
+        #print('List banned extensions: ', bannedextensions[i], '<--->', fld)
         # Invoke the function that checks each folder for file changes
         if checkfilechanges(fld, bannedextensions[i], ws):
             changed = True
@@ -333,26 +330,23 @@ def getdt(frmt):
     return today.strftime(frmt)
 
 
-def startxlsreport(cnf):
+def startxlsreport():
     # Create the workbook, get the hostname and current DateTime
-    xls = getbasefile() + '.xlsx'
-    if os.path.exists(xls):
-        wb = Workbook() if cnf == True else openpyxl.load_workbook(xls)
-    else:
-        wb = Workbook()
+    wb = Workbook()
     ws = wb.active
     ws.title = socket.gethostname()
-    st = getdt("%d-%b-%Y %H_%M_%S") if cnf == True else ''
+
+    st = getdt("%d-%b-%Y %H_%M_%S")
+
+    headerxlsreport(ws)
+
     return wb, ws, st
 
 
 def endxlsreport(wb, st):
-    if st != '':
-        dt = ' from ' + st + ' to ' + getdt("%d-%b-%Y %H_%M_%S")
-        fn = getbasefile() + dt + '.xlsx'
-    else:
-        fn = getbasefile() + '.xlsx'
-    wb.save(fn)
+    """Finalize the creation of the Excel report"""
+    dt = "_from_" + st + "_to_" + getdt("%d-%b-%Y %H_%M_%S")
+    wb.save(f"REPORT{dt}.xlsx")
 
 
 def headerxlsreport(ws):
@@ -390,89 +384,23 @@ def rowxlsreport(ws, fn, ffn, fld, d, t):
 
 
 def execute(args):
-    changed = False
     # Start the creation of the Excel report
-    if len(args) > 1:
-        if args[1].lower() == '--loop':
-            if len(args) == 3:
-                cnf = True if args[2].lower() == '--cnf' else False
-            else:
-                cnf = False
-            wb, ws, st = startxlsreport(cnf)
-            try:
-                while True:
-                    changed = runfilechanges(ws)
-            except KeyboardInterrupt:
-                print('Program stopped!!')
-                if changed:
-                    endxlsreport(wb, st)
+    wb, ws, st = startxlsreport()
+    if '--loop' in args:
+        try:
+            while True:
+                changed = runfilechanges(ws)
+        except KeyboardInterrupt:
+            # Check for a keyboard interruption to stop the script
+            print('Program stopped!!')
+            pass
     else:
-        wb, ws, st = startxlsreport()
         changed = runfilechanges(ws)
-        if changed:
-            endxlsreport(wb, st)
+    # Finalize the creation of the Excel report
+    endxlsreport(wb, st)
 
 
 """Check functionality"""
 if __name__ == "__main__":
     print(sys.argv)
     execute(sys.argv)
-
-    """
-    conn = connectdb()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "create table people (id integer primary key, name text, count integer)")
-    cursor.execute("insert into people (name, count) values ('Marius', 1)")
-    cursor.execute(
-        "insert into people (name, count) values (?, ?)", ("Radu", 15))
-    conn.commit()
-
-    result = cursor.execute("SELECT * FROM people")
-    for row in result:
-        print(row)
-
-    setuphashtable('test.txt', bytearray([1, 1, 2, 3, 5]))
-    updatehashtable('test.txt', bytearray([1, 2, 3, 5, 8]))
-
-    file1 = os.path.join(os.getcwd(), 'testdocuments', 'test1.txt')
-    file2 = os.path.join(os.getcwd(), 'testdocuments', 'test2.txt')
-    file3 = os.path.join(os.getcwd(), 'testdocuments',
-                         'testdir2', 'testdir2.2', 'test6.csv')
-    print("MD5 for FILE1 from DB:", md5indb(file1))
-    #print("FILE1 extension is:  ", getfileext(file1))
-    print('modif date for FILE1 is:  ', getmoddate(file1))
-    print('MD5 for FILE1 from DB:', md5indb(file1))
-    print('FILE1 MD5 value is: ', md5short(file1))
-    print('MD5 of file has changed: ', haschanged(file1, md5short(file1)))
-    time.sleep(2)
-
-    with open(file1, "a") as file_object:
-        # Append 'hello modification' at the end of file
-        file_object.write("\nhello modification")
-
-    print('modif date for FILE1 is:  ', getmoddate(file1))
-    print('MD5 of file has changed: ', haschanged(file1, md5short(file1)))
-    print('New FILE1 MD5 value is: ', md5short(file1))
-    print('New FILE1 MD5 in DB value is: ', md5indb(file1))
-
-    #setuphashtable(file1, bytearray([1, 1, 2, 3, 5]))
-
-    tableexists('people')  # Check if table exists
-    tableexists('files')   # Check if table exists
-    print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-    # print(loadflds())
-    runfilechanges()
-    time.sleep(2)
-    with open(file1, "a") as file_object:
-        # Append 'hello modification' at the end of file
-        file_object.write("hello modification\n")
-    time.sleep(2)
-    with open(file3, "a") as file_object:
-        # Append 'hello modification' at the end of file
-        file_object.write("hello modification\n")
-    time.sleep(2)
-    runfilechanges()
-    runfilechanges()
-    """
